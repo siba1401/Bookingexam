@@ -1,0 +1,91 @@
+{% extends "admin/login.html" %}
+{% load static %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    :root {
+        --nmims-navy: #1a237e;
+        --nmims-gold: #c5a059;
+    }
+
+    /* Professional academic background */
+    body.login-page {
+        background: linear-gradient(135deg, rgba(26, 35, 126, 0.85), rgba(13, 71, 161, 0.8)),
+                    url('https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1350&q=80') no-repeat center center fixed;
+        background-size: cover;
+    }
+
+    /* Card styling for high-end portal feel */
+    .login-box .card {
+        border-radius: 12px;
+        border: none;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.3) !important;
+        background: rgba(255, 255, 255, 0.98);
+    }
+
+    .login-card-body {
+        padding: 2.5rem !important;
+    }
+
+    .btn-primary {
+        background-color: var(--nmims-navy) !important;
+        border-color: var(--nmims-navy) !important;
+        font-weight: 700;
+        border-radius: 6px;
+        padding: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .btn-primary:hover {
+        background-color: #0d47a1 !important;
+        transform: translateY(-1px);
+    }
+
+    .card-header {
+        border-bottom: 1px solid #eee;
+        padding-bottom: 15px;
+    }
+
+    /* Focus states for inputs */
+    .form-control:focus {
+        border-color: var(--nmims-navy);
+        box-shadow: 0 0 0 0.2rem rgba(26, 35, 126, 0.15);
+    }
+</style>
+{% endblock %}
+
+{% block branding %}
+<div class="login-logo text-center" style="margin-bottom: 30px;">
+    <img src="{% static 'images/univ_logo.png' %}" alt="NMIMS Logo"
+         style="max-width: 210px; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.2));">
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="card card-outline" style="border-top: 5px solid var(--nmims-navy);">
+    <div class="card-header text-center">
+        <h4 style="color: var(--nmims-navy); font-weight: 800; letter-spacing: 1px; margin-bottom: 5px;">
+            EXAMINER PORTAL
+        </h4>
+        <p class="text-muted small mb-0">Examination Department Management System</p>
+    </div>
+
+    <div class="card-body login-card-body">
+        {{ block.super }}
+
+        <div class="text-center mt-4">
+            <hr style="border-top: 1px solid #ddd;">
+            <p class="text-muted mb-2" style="font-size: 0.85rem;">Access issues or forgotten password?</p>
+            <a href="mailto:support@nmims.edu" class="btn btn-outline-dark btn-sm px-4" style="border-radius: 20px; font-weight: 600;">
+                <i class="fas fa-headset me-2"></i>Contact IT Support
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="text-center mt-3 text-white-50" style="font-size: 0.75rem;">
+    &copy; 2026 SVKM's NMIMS | All Rights Reserved.
+</div>
+{% endblock %}

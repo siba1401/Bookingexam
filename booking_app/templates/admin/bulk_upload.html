@@ -1,0 +1,54 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<div style="padding: 20px; background: white; border: 1px solid #ddd; border-radius: 8px; color: #333; max-width: 700px; margin: 20px auto; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+    <h2 style="margin-top: 0; color: #003366; border-bottom: 2px solid #003366; padding-bottom: 10px;">{{ title }}</h2>
+
+    <p style="margin-top: 15px;">Please upload an Excel file (<strong>.xlsx</strong> or <strong>.xls</strong>) containing the following column headers:</p>
+
+    <div style="background: #f0f7ff; padding: 20px; border-left: 5px solid #003366; margin-bottom: 25px; border-radius: 4px;">
+        {% if "Faculty" in title or "ExamDept" in title %}
+            <h4 style="margin-top: 0; color: #003366;">Faculty Upload Headers:</h4>
+            <ul style="margin: 0; line-height: 1.8;">
+                <li><strong>username</strong> <span style="color: #d9534f;">(Required, must be unique)</span></li>
+                <li><strong>email</strong> <span style="color: #666;">(Required for OTP login)</span></li>
+                <li><strong>first_name</strong></li>
+                <li><strong>last_name</strong></li>
+                <li><strong>department</strong></li>
+            </ul>
+            <p style="margin-top: 15px; font-size: 0.9rem; background: #fff3cd; padding: 8px; border-radius: 4px; color: #856404; border: 1px solid #ffeeba;">
+                <strong>Note:</strong> Default password for new users will be set to: <code style="font-weight: bold;">password123</code>
+            </p>
+        {% else %}
+            <h4 style="margin-top: 0; color: #003366;">Exam Dept. User Upload Headers:</h4>
+            <ul style="margin: 0; line-height: 1.8;">
+                <li><strong>name</strong> <span style="color: #666;">(Full Name of the Supervisor)</span></li>
+                <li><strong>sap_vendor_code</strong> <span style="color: #d9534f;">(Required, Unique Code)</span></li>
+            </ul>
+            <p style="margin-top: 10px; font-size: 0.85rem; color: #555; font-style: italic;">
+                * Only Name and SAP Code are stored for booking verification.
+            </p>
+        {% endif %}
+    </div>
+
+
+
+    <form method="POST" enctype="multipart/form-data" style="background: #fafafa; padding: 20px; border-radius: 8px; border: 1px dashed #ccc;">
+        {% csrf_token %}
+        <div style="margin-bottom: 25px;">
+            <label for="file_input" style="display: block; margin-bottom: 10px; font-weight: bold; font-size: 1.1rem;">Select Excel File:</label>
+            <input type="file" id="file_input" name="excel_file" accept=".xlsx, .xls" required
+                   style="background: #fff; padding: 10px; border: 1px solid #ccc; width: 100%; box-sizing: border-box; border-radius: 4px;">
+        </div>
+
+        <div style="display: flex; align-items: center;">
+            <button type="submit" class="button" style="background: #28a745; color: white; padding: 12px 25px; border: none; cursor: pointer; border-radius: 4px; font-weight: bold; font-size: 1rem;">
+                🚀 Start Bulk Import
+            </button>
+
+            <a href=".." style="margin-left: 15px; color: #6c757d; text-decoration: none; font-weight: bold;">
+                Cancel and Return
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

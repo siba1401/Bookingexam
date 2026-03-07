@@ -1,0 +1,14 @@
+# Environments
+.venv/
+.env
+
+# Python
+__pycache__/
+*.pyc
+
+# Local Postgres exported backups (if you ever make them)
+*.sql
+*.dump
+
+# Static files
+staticfiles/

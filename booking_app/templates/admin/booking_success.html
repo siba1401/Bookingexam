@@ -1,0 +1,22 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<div class="container" style="padding: 40px; text-align: center;">
+    <div style="background: white; padding: 50px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+        <h1 style="color: #28a745; font-size: 3rem;">✔ Success!</h1>
+        <h2 style="margin-top: 20px;">Enrollment Confirmed</h2>
+
+        <div style="margin: 30px auto; max-width: 500px; text-align: left; background: #f8f9fa; padding: 20px; border-radius: 10px;">
+            <p><strong>Examiner:</strong> {{ booking.examiner.name }}</p>
+            <p><strong>Date:</strong> {{ booking.date }}</p>
+            <p><strong>Slot:</strong> {{ booking.slot }}</p>
+            <p><strong>Transaction ID:</strong> {{ booking.transaction_id|default:"N/A" }}</p>
+        </div>
+
+        <div style="margin-top: 30px;">
+            <a href="{% url 'admin:booking_dashboard' %}" class="button" style="background: #1a237e; color: white; padding: 10px 25px; text-decoration: none; border-radius: 5px;">Back to Dashboard</a>
+            <a href="{% url 'admin:booking_app_booking_changelist' %}" class="button" style="background: #6c757d; color: white; padding: 10px 25px; text-decoration: none; border-radius: 5px; margin-left: 10px;">View All My Bookings</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

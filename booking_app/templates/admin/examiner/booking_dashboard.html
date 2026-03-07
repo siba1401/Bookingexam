@@ -1,0 +1,297 @@
+{% extends "admin/base_site.html" %}
+{% load booking_extras %}
+
+{% block content %}
+<style>
+    :root {
+        --primary-dark: #1a237e;
+        --bg-light: #f4f7f9;
+        --danger-bold: #d32f2f;
+        --success-green: #2e7d32;
+        --info-blue: #0288d1;
+        --today-bg: rgba(255, 193, 7, 0.12); /* Subtle Gold for Today */
+        --today-border: #ffc107;
+    }
+
+    .content-wrapper { margin-left: 0 !important; background-color: var(--bg-light) !important; padding: 0 !important; }
+    .main-footer { margin-left: 0 !important; border-top: 1px solid #ddd; }
+
+    {% if not request.user.is_superuser %}
+    .breadcrumb, .content-header { display: none !important; }
+    .main-sidebar { display: none !important; }
+    {% endif %}
+
+    /* Hero Header */
+    .hero-header {
+        background: linear-gradient(135deg, var(--primary-dark) 0%, #0d47a1 100%);
+        color: white;
+        padding: 3rem 2rem 6rem 2rem;
+        margin-bottom: -5rem;
+        border-radius: 0 0 40px 40px;
+        box-shadow: 0 4px 25px rgba(0,0,0,0.15);
+    }
+
+    /* Stats Cards */
+    .stats-container {
+        position: relative;
+        z-index: 20;
+        margin-top: -3rem;
+    }
+    .stat-card {
+        background: white;
+        border-radius: 15px;
+        border: none;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+        transition: transform 0.3s ease;
+    }
+    .stat-card:hover { transform: translateY(-5px); }
+
+    .filter-card {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.12);
+        margin: 2rem 2.5rem;
+        position: relative;
+        z-index: 10;
+    }
+
+    /* Sticky Table Styling */
+    .table-responsive {
+        max-height: 800px;
+        overflow-y: auto;
+    }
+    thead th {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        background: #f8f9fa !important;
+        box-shadow: inset 0 -1px 0 #dee2e6;
+    }
+
+    /* Today Highlighter Styling */
+    .today-header {
+        background-color: var(--today-border) !important;
+        color: #000 !important;
+    }
+    .today-cell {
+        background-color: var(--today-bg) !important;
+        border-left: 1px solid rgba(255, 193, 7, 0.3);
+        border-right: 1px solid rgba(255, 193, 7, 0.3);
+    }
+
+    .table td:first-child, .table th:first-child {
+        position: sticky;
+        left: 0;
+        z-index: 101;
+        background: #f8f9fa !important;
+        border-right: 2px solid #eee;
+    }
+
+    .examiner-card {
+        border-radius: 18px;
+        background: white;
+        margin: 0 2.5rem 3rem 2.5rem;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        overflow: hidden;
+    }
+
+    .btn-status {
+        height: 100px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        border-radius: 12px;
+        border: none;
+        color: white !important;
+        font-weight: bold;
+        transition: all 0.2s ease;
+    }
+
+    /* Status Colors */
+    .btn-my-booking { background: linear-gradient(135deg, #00b4db 0%, #0083b0 100%); }
+    .btn-paid { background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%); }
+    .badge-booked-unpaid { background: var(--danger-bold); box-shadow: 0 4px 10px rgba(211, 47, 47, 0.3); }
+
+    /* Vacant Hover */
+    .btn-vacant {
+        background: #fff;
+        border: 2px dashed #ddd !important;
+        color: #666 !important;
+    }
+    .btn-vacant:hover {
+        background: #e8f5e9 !important;
+        border-color: #2e7d32 !important;
+        transform: scale(1.02);
+    }
+
+    .text-status-main { font-size: 1.1rem; font-weight: 800; }
+    .text-status-sub { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; opacity: 0.9; }
+
+    /* Legend */
+    .legend-bar {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: white;
+        padding: 10px 25px;
+        border-radius: 50px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        z-index: 1000;
+        display: flex;
+        gap: 20px;
+        border: 1px solid #ddd;
+    }
+</style>
+
+<div class="container-fluid pb-5">
+    <div class="hero-header d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="font-weight-bold">Enrollment Dashboard</h1>
+            <p class="lead opacity-75 mb-0">Examination Personnel Management System</p>
+        </div>
+        <div class="text-right">
+            <div class="bg-white text-dark px-3 py-2 rounded shadow-sm d-inline-block">
+                <i class="fas fa-user-circle mr-2 text-primary"></i><strong>{{ request.user.username }}</strong>
+            </div>
+            <br>
+            <a href="{% url 'admin:logout' %}" class="text-white-50 small mt-2 d-inline-block"><i class="fas fa-sign-out-alt"></i> Sign Out</a>
+        </div>
+    </div>
+
+    <div class="row px-5 stats-container">
+        <div class="col-md-4">
+            <div class="card stat-card p-3" style="border-left: 5px solid var(--info-blue);">
+                <div class="d-flex align-items-center">
+                    <div class="rounded-circle bg-light p-3 mr-3"><i class="fas fa-bookmark text-info"></i></div>
+                    <div>
+                        <h3 class="mb-0 font-weight-bold">{{ examiners|get_user_count:request.user }}</h3>
+                        <small class="text-muted font-weight-bold">MY ENROLLMENTS</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card stat-card p-3" style="border-left: 5px solid var(--danger-bold);">
+                <div class="d-flex align-items-center">
+                    <div class="rounded-circle bg-light p-3 mr-3"><i class="fas fa-users text-danger"></i></div>
+                    <div>
+                        <h3 class="mb-0 font-weight-bold">{{ examiners|get_total_booked }}</h3>
+                        <small class="text-muted font-weight-bold">TOTAL BOOKED</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card stat-card p-3" style="border-left: 5px solid var(--success-green);">
+                <div class="d-flex align-items-center">
+                    <div class="rounded-circle bg-light p-3 mr-3"><i class="fas fa-check-circle text-success"></i></div>
+                    <div>
+                        <h3 class="mb-0 font-weight-bold">{{ examiners|get_total_vacant }}</h3>
+                        <small class="text-muted font-weight-bold">SLOTS AVAILABLE</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card filter-card p-4">
+        <div class="row align-items-end">
+            <div class="col-md-3">
+                <form method="GET" id="filterForm" class="m-0">
+                    <label class="small font-weight-bold text-muted text-uppercase">Calendar Week</label>
+                    <div class="input-group">
+                        <input type="date" name="date" class="form-control border-0 bg-light" value="{{ selected_date|date:'Y-m-d' }}">
+                        <div class="input-group-append">
+                            <a href="?date={{ today|date:'Y-m-d' }}" class="btn btn-outline-secondary border-0 bg-light" title="Go to Today">
+                                <i class="fas fa-calendar-day"></i>
+                            </a>
+                        </div>
+                    </div>
+            </div>
+            <div class="col-md-3">
+                    <label class="small font-weight-bold text-muted text-uppercase">Examiner Search</label>
+                    <select name="examiner_id" class="form-control border-0 bg-light">
+                        <option value="">All Examiners</option>
+                        {% for ex in all_examiners %}
+                            <option value="{{ ex.id }}" {% if ex.id == selected_examiner %}selected{% endif %}>{{ ex.name }}</option>
+                        {% endfor %}
+                    </select>
+            </div>
+            <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary btn-block shadow-sm py-2">
+                        <i class="fas fa-sync-alt mr-2"></i>Update View
+                    </button>
+                </form>
+            </div>
+            <div class="col-md-3">
+                <a href="{% url 'admin:export_all_bookings_excel' %}" class="btn btn-success btn-block shadow-sm py-2">
+                    <i class="fas fa-file-excel mr-2"></i>Download Excel
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {% for examiner in examiners %}
+    <div class="card examiner-card">
+        <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 font-weight-bold text-primary">{{ examiner.name }}</h5>
+            <span class="badge badge-secondary px-3 py-2">SAP: {{ examiner.sap_vendor_code }}</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table text-center mb-0 border-top">
+                <thead>
+                    <tr class="bg-light">
+                        <th class="py-3">SLOT</th>
+                        {% for day in week_days %}
+                            <th class="py-3 {% if day == today %}today-header{% endif %}">
+                                {{ day|date:"D" }}<br><small class="{% if day == today %}text-dark{% else %}text-muted{% endif %}">{{ day|date:"d M" }}</small>
+                            </th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for slot in slots %}
+                    <tr>
+                        <td class="align-middle font-weight-bold text-muted small">{{ slot }}</td>
+                        {% for day in week_days %}
+                        <td class="p-2 {% if day == today %}today-cell{% endif %}">
+                            {% week_check examiner day slot as b %}
+                            {% if b %}
+                                {% if b.booked_by == request.user or request.user.is_superuser %}
+                                    <a href="{% url 'admin:booking_app_booking_change' b.id %}"
+                                       class="btn btn-block btn-status {% if b.is_paid %}btn-paid{% else %}btn-my-booking{% endif %} shadow-sm">
+                                        <span class="text-status-main">{{ b.school_name }}</span>
+                                        <span class="text-status-sub">BOOKED</span>
+                                    </a>
+                                {% else %}
+                                    <div class="btn-status rounded badge-booked-unpaid">
+                                        <span class="text-status-main">{{ b.school_name }}</span>
+                                        <span class="text-status-sub">BOOKED</span>
+                                    </div>
+                                {% endif %}
+                            {% else %}
+                                <a href="{% url 'admin:booking_app_booking_add' %}?examiner={{ examiner.id }}&date={{ day|date:'Y-m-d' }}&slot={{ slot }}"
+                                   class="btn btn-block btn-status btn-vacant">
+                                    <span class="text-status-main text-success">VACANT</span>
+                                    <span class="text-status-sub text-muted">Enroll</span>
+                                </a>
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="legend-bar small font-weight-bold text-muted">
+    <div class="d-flex align-items-center"><span class="mr-2 rounded-circle" style="width:12px; height:12px; background:#00b4db;"></span> SCHOOL ENROLLED</div>
+    <div class="d-flex align-items-center"><span class="mr-2 rounded-circle" style="width:12px; height:12px; background:#d32f2f;"></span> OTHER SCHOOL</div>
+    <div class="d-flex align-items-center"><span class="mr-2 rounded-circle" style="width:12px; height:12px; border:1px solid #ddd; background:#fff;"></span> VACANT</div>
+</div>
+
+{% endblock %}
