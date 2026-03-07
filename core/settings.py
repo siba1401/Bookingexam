@@ -10,7 +10,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv('SECRET_KEY', 'your-fallback-key')
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 #ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
-ALLOWED_HOSTS = ['*'] # Or your specific render domain later
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    '.onrender.com',  # This allows all subdomains on Render
+]
 
 INSTALLED_APPS = [
     'jazzmin',
@@ -40,11 +44,11 @@ AUTH_USER_MODEL = 'booking_app.Faculty'
 WSGI_APPLICATION = 'core.wsgi.application'
 
 import dj_database_url
-import os
 
+# Use Render's DB if available, otherwise fallback to your local Postgres
 DATABASES = {
     'default': dj_database_url.config(
-        default=os.environ.get('DATABASE_URL'),
+        default=os.getenv('DATABASE_URL', 'postgres://postgres:admin1401@127.0.0.1:5432/booking_db'),
         conn_max_age=600
     )
 }
