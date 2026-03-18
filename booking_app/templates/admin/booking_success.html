@@ -2,20 +2,41 @@
 
 {% block content %}
 <div class="container" style="padding: 40px; text-align: center;">
-    <div style="background: white; padding: 50px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+    <div style="background: white; padding: 50px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width: 700px; margin: 0 auto;">
         <h1 style="color: #28a745; font-size: 3rem;">✔ Success!</h1>
         <h2 style="margin-top: 20px;">Enrollment Confirmed</h2>
+        <p style="color: #666;">Successfully processed <strong>{{ data.count }}</strong> slots for <strong>{{ data.school }}</strong>.</p>
 
-        <div style="margin: 30px auto; max-width: 500px; text-align: left; background: #f8f9fa; padding: 20px; border-radius: 10px;">
-            <p><strong>Examiner:</strong> {{ booking.examiner.name }}</p>
-            <p><strong>Date:</strong> {{ booking.date }}</p>
-            <p><strong>Slot:</strong> {{ booking.slot }}</p>
-            <p><strong>Transaction ID:</strong> {{ booking.transaction_id|default:"N/A" }}</p>
+        <div style="margin: 30px auto; text-align: left; background: #f8f9fa; padding: 25px; border-radius: 10px;">
+            <h3 style="border-bottom: 2px solid #ddd; padding-bottom: 10px; font-size: 1.1rem; color: #1a237e;">Enrollment Summary</h3>
+            <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+                <thead>
+                    <tr style="text-align: left; color: #888; font-size: 0.9rem;">
+                        <th style="padding: 10px 5px;">Supervisor</th>
+                        <th style="padding: 10px 5px;">Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in data.items %}
+                    <tr style="border-bottom: 1px solid #eee;">
+                        <td style="padding: 12px 5px; font-weight: bold;">{{ item.name }}</td>
+                        <td style="padding: 12px 5px;">{{ item.date }} | <span style="color: #1a237e;">{{ item.slot }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <p style="margin-top: 20px; font-size: 0.8rem; color: #999; text-align: center;">
+                Batch ID: {{ data.batch }}
+            </p>
         </div>
 
-        <div style="margin-top: 30px;">
-            <a href="{% url 'admin:booking_dashboard' %}" class="button" style="background: #1a237e; color: white; padding: 10px 25px; text-decoration: none; border-radius: 5px;">Back to Dashboard</a>
-            <a href="{% url 'admin:booking_app_booking_changelist' %}" class="button" style="background: #6c757d; color: white; padding: 10px 25px; text-decoration: none; border-radius: 5px; margin-left: 10px;">View All My Bookings</a>
+        <div style="margin-top: 30px; display: flex; justify-content: center; gap: 15px;">
+            <a href="{% url 'admin:booking_dashboard' %}" style="background: #1a237e; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Back to Dashboard</a>
+            <a href="{% url 'admin:booking_app_booking_changelist' %}" style="background: #6c757d; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">View All My Bookings</a>
+        </div>
+
+        <div style="margin-top: 20px;">
+            <button onclick="window.print()" style="background: none; border: 1px solid #ccc; padding: 8px 15px; border-radius: 4px; cursor: pointer; color: #666;">Print Confirmation</button>
         </div>
     </div>
 </div>

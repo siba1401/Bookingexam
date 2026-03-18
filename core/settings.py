@@ -4,17 +4,14 @@ from dotenv import load_dotenv
 
 # Load .env at the very top
 load_dotenv()
+FAST2SMS_KEY = os.getenv('FAST2SMS_API_KEY')
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv('SECRET_KEY', 'your-fallback-key')
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
-#ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
-ALLOWED_HOSTS = [
-    'localhost',
-    '127.0.0.1',
-    '.onrender.com',  # This allows all subdomains on Render
-]
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '.vercel.app']
+#ALLOWED_HOSTS = ['localhost','127.0.0.1','10.125.66.231','.onrender.com',  # This allows all subdomains on Render]
 
 INSTALLED_APPS = [
     'jazzmin',
@@ -46,12 +43,39 @@ WSGI_APPLICATION = 'core.wsgi.application'
 import dj_database_url
 
 # Use Render's DB if available, otherwise fallback to your local Postgres
-DATABASES = {
-    'default': dj_database_url.config(
-        default=os.getenv('DATABASE_URL', 'postgres://postgres:admin1401@127.0.0.1:5432/booking_db'),
-        conn_max_age=600
-    )
-}
+#DATABASES = {
+    #'default': dj_database_url.config(
+        #default=os.getenv('DATABASE_URL', 'postgres://postgres:admin1401@127.0.0.1:5432/booking_db'),
+        #conn_max_age=600
+    #)
+#}
+
+import dj_database_url
+
+# This tries to get 'DATABASE_URL' from Vercel/Neon environment variables
+# If it doesn't find it, it falls back to your local manual config
+DATABASE_URL = os.getenv('DATABASE_URL')
+
+if DATABASE_URL:
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=DATABASE_URL,
+            conn_max_age=600,
+            ssl_require=True
+        )
+    }
+else:
+    # Manual fallback for local development
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('DB_NAME', 'booking_db'),
+            'USER': os.getenv('DB_USER', 'postgres'),
+            'PASSWORD': os.getenv('DB_PASSWORD', 'admin1401'),
+            'HOST': os.getenv('DB_HOST', 'localhost'),
+            'PORT': os.getenv('DB_PORT', '5432'),
+        }
+    }
 
 # Fixes E403: Admin needs this exact structure
 TEMPLATES = [

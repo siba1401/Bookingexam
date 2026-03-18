@@ -1,107 +1,91 @@
+import io
 import pandas as pd
+import requests
 from datetime import datetime, timedelta
+from collections import defaultdict
 from django.contrib import admin, messages
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect
 from django.urls import path, reverse
 from django.utils.html import format_html
 from django.utils import timezone
 from django.http import HttpResponse
 from django.contrib.auth.admin import UserAdmin
-from .models import Examiner, Faculty, Booking
+from django.db import transaction
+from django.db.models import Count, F
+from django.conf import settings
 
-# Global Admin Branding
-admin.site.site_header = "NMIMS Exam Admin"
-admin.site.site_title = "NMIMS Portal"
-admin.site.index_title = "Welcome to the Examiner Enrollment Portal"
+# Import models from the current app
+from .models import Examiner, Faculty, Booking, SMSLog
 
 
 @admin.register(Faculty)
 class ExamDeptAdmin(UserAdmin):
-    list_display = ('username', 'department', 'bulk_upload_link')
-
+    list_display = ('username', 'school', 'bulk_upload_link')
     fieldsets = (
         (None, {'fields': ('username', 'password')}),
-        ('Personal info', {'fields': ('first_name', 'last_name', 'email', 'department')}),
+        ('Personal info', {'fields': ('first_name', 'last_name', 'email', 'school')}),
         ('Permissions', {'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions')}),
         ('Important dates', {'fields': ('last_login', 'date_joined')}),
     )
 
-    class Media:
-        js = (
-            'admin/js/vendor/jquery/jquery.js',
-            'admin/js/jquery.init.js',
-        )
-
     def bulk_upload_link(self, obj=None):
         url = reverse('admin:faculty_bulk_upload')
         return format_html(
-            '<a class="button" style="background:#007bff; color:white; padding:5px 10px; border-radius:4px; font-weight:bold;" href="{}">Bulk Upload</a>',
+            '<a class="button" style="background:#003366; color:white; padding:5px 10px; border-radius:4px;" href="{}">Bulk Upload</a>',
             url)
 
     def get_urls(self):
-        urls = super().get_urls()
-        custom_urls = [
-            path('bulk-upload-faculty/', self.admin_site.admin_view(self.bulk_upload_faculty),
-                 name='faculty_bulk_upload')
-        ]
-        return custom_urls + urls
+        return [path('bulk-upload-faculty/', self.admin_site.admin_view(self.bulk_upload_faculty),
+                     name='faculty_bulk_upload')] + super().get_urls()
 
     def bulk_upload_faculty(self, request):
         if request.method == "POST":
             file = request.FILES.get('excel_file')
-            if not file:
-                messages.error(request, "Please upload an Excel file.")
-                return redirect("admin:faculty_bulk_upload")
             try:
-                df = pd.read_excel(file)
-                count = 0
+                # Vercel fix: Read from memory
+                df = pd.read_excel(io.BytesIO(file.read()))
                 for _, row in df.iterrows():
-                    username = str(row['username']).strip().lower()
-                    user, created = Faculty.objects.get_or_create(username=username)
+                    if pd.isna(row.get('username')) or pd.isna(row.get('email')): continue
+                    user, created = Faculty.objects.get_or_create(username=str(row['username']).strip().lower())
                     user.email = row.get('email')
-                    user.department = row.get('department')
-                    if created or not user.has_usable_password():
-                        user.set_password("password123")
+                    user.school = row.get('school', 'MPSTME')
+                    if created: user.set_password("password123")
                     user.is_staff = True
-                    user.is_active = True
                     user.save()
-                    count += 1
-                messages.success(request, f"Successfully imported {count} faculty members.")
+                messages.success(request, "Faculty imported successfully.")
                 return redirect("admin:booking_app_faculty_changelist")
             except Exception as e:
-                messages.error(request, f"Error processing file: {e}")
-        return render(request, 'admin/bulk_upload.html', {'title': 'Bulk Upload Exam Department User'})
+                messages.error(request, f"Error: {e}")
+        return render(request, 'admin/bulk_upload.html', {'title': 'Bulk Upload Faculty'})
 
 
 @admin.register(Examiner)
 class ExaminerAdmin(admin.ModelAdmin):
-    list_display = ('name', 'sap_vendor_code', 'upload_button')
+    list_display = ('name', 'sap_vendor_code', 'mobile_number', 'upload_button')
 
     def upload_button(self, obj=None):
         url = reverse('admin:examiner_bulk_upload')
         return format_html(
-            '<a class="button" style="background:#28a745; color:white; padding:5px 10px; border-radius:4px; font-weight:bold;" href="{}">Bulk Upload</a>',
+            '<a class="button" style="background:#28a745; color:white; padding:5px 10px; border-radius:4px;" href="{}">Bulk Upload</a>',
             url)
 
     def get_urls(self):
-        urls = super().get_urls()
-        custom_urls = [
-            path('bulk-upload-examiner/', self.admin_site.admin_view(self.bulk_upload_examiner),
-                 name='examiner_bulk_upload')
-        ]
-        return custom_urls + urls
+        return [path('bulk-upload-examiner/', self.admin_site.admin_view(self.bulk_upload_examiner),
+                     name='examiner_bulk_upload')] + super().get_urls()
 
     def bulk_upload_examiner(self, request):
         if request.method == "POST":
             file = request.FILES.get('excel_file')
             try:
-                df = pd.read_excel(file)
+                # Vercel fix: Read from memory
+                df = pd.read_excel(io.BytesIO(file.read()))
                 for _, row in df.iterrows():
-                    Examiner.objects.get_or_create(
-                        sap_vendor_code=str(row['sap_vendor_code']).strip(),
-                        defaults={'name': row['name']}
-                    )
-                messages.success(request, "Supervisor imported successfully.")
+                    sap_code = str(row.get('sap_vendor_code', '')).strip()
+                    if not sap_code: continue
+                    Examiner.objects.update_or_create(sap_vendor_code=sap_code,
+                                                      defaults={'name': row['name'],
+                                                                'mobile_number': row.get('mobile_number')})
+                messages.success(request, "Supervisors imported.")
                 return redirect("admin:booking_app_examiner_changelist")
             except Exception as e:
                 messages.error(request, f"Error: {e}")
@@ -110,141 +94,182 @@ class ExaminerAdmin(admin.ModelAdmin):
 
 @admin.register(Booking)
 class BookingAdmin(admin.ModelAdmin):
-    change_list_template = "admin/examiner/change_list.html"
-    # Added school_name to list_display
-    list_display = ('booked_by', 'examiner', 'school_name', 'date', 'slot', 'is_paid', 'transaction_id', 'display_total_amount')
-    search_fields = ('booked_by__username', 'examiner__name', 'transaction_id', 'school_name')
-    # Added school_name to list_filter
-    list_filter = ('school_name', 'date', 'slot', 'is_paid')
+    list_display = (
+        'booked_by', 'examiner', 'school_name', 'date', 'slot', 'sms_status', 'is_paid', 'display_total_amount')
 
-    # --- PERMISSIONS & AUTO-ASSIGNMENT ---
-    def get_queryset(self, request):
-        qs = super().get_queryset(request)
-        if request.user.is_superuser:
-            return qs
-        return qs.filter(booked_by=request.user)
-
-    def has_change_permission(self, request, obj=None):
-        if obj is not None and not request.user.is_superuser and obj.booked_by != request.user:
-            return False
-        return super().has_change_permission(request, obj)
-
-    def has_delete_permission(self, request, obj=None):
-        if obj is not None and not request.user.is_superuser and obj.booked_by != request.user:
-            return False
-        return super().has_delete_permission(request, obj)
-
-    def get_fields(self, request, obj=None):
-        fields = super().get_fields(request, obj)
-        if not request.user.is_superuser:
-            return [f for f in fields if f != 'booked_by']
-        return fields
-
-    def get_changeform_initial_data(self, request):
-        initial = super().get_changeform_initial_data(request)
-        if 'examiner' in request.GET:
-            initial['examiner'] = request.GET.get('examiner')
-        if 'date' in request.GET:
-            initial['date'] = request.GET.get('date')
-        if 'slot' in request.GET:
-            initial['slot'] = request.GET.get('slot')
-        return initial
-
-    def save_model(self, request, obj, form, change):
-        if not change:
-            if not request.user.is_superuser:
-                obj.booked_by = request.user
-
-            # Check if this user (Exam Dept) has already booked a supervisor for this specific slot
-            conflict = Booking.objects.filter(
-                booked_by=obj.booked_by,
-                date=obj.date,
-                slot=obj.slot
-            ).exists()
-            if conflict:
-                messages.error(request, f"Conflict: You already have a booking on {obj.date} at {obj.slot}.")
-                return
-        super().save_model(request, obj, form, change)
-
-    # --- METHODS ---
     def display_total_amount(self, obj):
         return obj.total_amount
 
-    display_total_amount.short_description = "Total Amount"
+    display_total_amount.short_description = "Total"
 
-    def response_add(self, request, obj, post_url_continue=None):
-        return redirect(reverse('admin:booking_success', args=[obj.id]))
+    def sms_status(self, obj):
+        last_log = obj.sms_logs.order_by('-sent_at').first()
+        if not last_log: return format_html('<span style="color: #999;">⚪ No Log</span>')
+        color = "#28a745" if last_log.status == "Success" else "#dc3545"
+        icon = "✔" if last_log.status == "Success" else "✘"
+        return format_html(f'<span style="color: {color}; font-size: 1.2em;">{icon}</span>')
 
-    def response_change(self, request, obj):
-        return redirect(reverse('admin:booking_success', args=[obj.id]))
+    sms_status.short_description = "SMS"
 
-    actions = ["export_to_excel"]
+    # CRITICAL: This method must be inside the class and named exactly as called
+    def _execute_sms_send(self, booking_obj, phone, message):
+        url = "https://www.fast2sms.com/dev/bulkV2"
+        # Match your settings.py variable
+        api_key = getattr(settings, 'FAST2SMS_KEY', None)
 
-    def export_to_excel(self, request, queryset=None):
-        if queryset is None:
-            queryset = Booking.objects.all()
+        if not phone or not api_key:
+            error = f"Fail: Phone={phone}, KeyFound={'Yes' if api_key else 'No'}"
+            SMSLog.objects.create(booking=booking_obj, status="Failed", response_body=error)
+            return
 
-        if not queryset.exists():
-            messages.warning(request, "No data available to export.")
-            return redirect(request.META.get('HTTP_REFERER', 'admin:booking_dashboard'))
+        payload = {
+            "route": "q",
+            "message": message,
+            "language": "english",
+            "numbers": str(phone),
+        }
+        headers = {"authorization": api_key, "Content-Type": "application/json"}
 
-        data = []
-        for b in queryset:
-            data.append({
-                "Booked By": b.booked_by.username if b.booked_by else "N/A",
-                "School": b.get_school_name_display(), # Shows full name from choices
-                "Examiner": b.examiner.name,
-                "Date": b.date,
-                "Slot": b.slot,
-                "Paid Status": "Yes" if b.is_paid else "No",
-                "Transaction ID": b.transaction_id or "N/A",
-                "Total Amount": b.total_amount
-            })
-        df = pd.DataFrame(data)
-        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-        response['Content-Disposition'] = f'attachment; filename=Booking_Report_{timezone.now().date()}.xlsx'
-        with pd.ExcelWriter(response, engine='openpyxl') as writer:
-            df.to_excel(writer, index=False)
-        return response
+        try:
+            response = requests.post(url, json=payload, headers=headers)
+            res_data = response.json()
+            status = "Success" if res_data.get("return") else "Failed"
+            SMSLog.objects.create(
+                booking=booking_obj,
+                mobile_number=phone,
+                status=status,
+                response_body=str(res_data)
+            )
+        except Exception as e:
+            SMSLog.objects.create(booking=booking_obj, status="Failed", response_body=str(e))
 
-    export_to_excel.short_description = "Export Selected to Excel"
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs if request.user.is_superuser else qs.filter(booked_by=request.user)
 
     def get_urls(self):
         urls = super().get_urls()
         custom_urls = [
             path('dashboard/', self.admin_site.admin_view(self.booking_dashboard), name='booking_dashboard'),
-            path('export-excel-report/', self.admin_site.admin_view(self.export_to_excel),
-                 name='export_all_bookings_excel'),
-            path('<int:booking_id>/success/', self.admin_site.admin_view(self.booking_success_view),
-                 name='booking_success'),
+            path('bulk-enroll/', self.admin_site.admin_view(self.bulk_enroll_from_dashboard), name='bulk_enroll_slots'),
+            path('supervisor-summary-report/', self.admin_site.admin_view(self.supervisor_summary_report),
+                 name='supervisor_summary_report'),
+            path('export-summary-excel/', self.admin_site.admin_view(self.export_summary_to_excel),
+                 name='export_summary_excel'),
         ]
         return custom_urls + urls
 
-    def booking_success_view(self, request, booking_id):
-        booking = get_object_or_404(Booking, id=booking_id)
-        return render(request, 'admin/booking_success.html',
-                      {**self.admin_site.each_context(request), 'booking': booking})
+    def bulk_enroll_from_dashboard(self, request):
+        if request.method == "POST":
+            selected_data = request.POST.getlist('selected_slots')
+            enrolled_items = []
+            batch_id = f"BATCH-{timezone.now().strftime('%y%m%d%H%M%S')}"
+
+            try:
+                with transaction.atomic():
+                    for item in selected_data:
+                        ex_id, d_str, s_val = item.split('|')
+                        obj, created = Booking.objects.get_or_create(
+                            examiner_id=ex_id, date=d_str, slot=s_val,
+                            defaults={
+                                'booked_by': request.user,
+                                'is_paid': True,
+                                'transaction_id': batch_id,
+                                'school_name': request.user.school
+                            }
+                        )
+                        if created:
+                            enrolled_items.append({'obj': obj, 'date': d_str, 'slot': s_val})
+
+                if enrolled_items:
+                    grouped = defaultdict(list)
+                    for item in enrolled_items:
+                        grouped[item['obj'].examiner.id].append(item)
+
+                    for ex_id, items in grouped.items():
+                        first_item = items[0]['obj']
+                        clean_phone = first_item.examiner.mobile_number  # Ensure this field exists
+                        summary_list = [f"{i['date']}({i['slot']})" for i in items]
+                        message = f"Dear {first_item.examiner.name}, confirmed for {first_item.school_name} on: {', '.join(summary_list)}."
+
+                        # Correctly calling the method within the class
+                        self._execute_sms_send(first_item, clean_phone, message)
+
+                    messages.success(request, f"Successfully booked {len(enrolled_items)} slots.")
+                return redirect(reverse('admin:booking_dashboard'))
+            except Exception as e:
+                messages.error(request, f"Error: {e}")
+        return redirect(reverse('admin:booking_dashboard'))
 
     def booking_dashboard(self, request):
         date_str = request.GET.get('date')
-        ex_id = request.GET.get('examiner_id')
         selected_date = datetime.strptime(date_str, '%Y-%m-%d').date() if date_str else timezone.now().date()
-        week_days = [selected_date - timedelta(days=selected_date.weekday()) + timedelta(days=i) for i in range(7)]
-        all_examiners = Examiner.objects.all()
-        examiners = all_examiners.filter(id=ex_id) if ex_id else all_examiners
+        start_of_week = selected_date - timedelta(days=selected_date.weekday())
+        week_days = [start_of_week + timedelta(days=i) for i in range(7)]
+        examiners = Examiner.objects.all()
         all_bookings = Booking.objects.filter(date__range=[week_days[0], week_days[-1]])
-
         for ex in examiners:
             ex.week_bookings = [b for b in all_bookings if b.examiner_id == ex.id]
-
         return render(request, 'admin/examiner/booking_dashboard.html', {
-            **self.admin_site.each_context(request),
-            'examiners': examiners,
-            'all_examiners': all_examiners,
-            'selected_date': selected_date,
-            'selected_examiner': int(ex_id) if ex_id else None,
-            'week_days': week_days,
-            'slots': [c[0] for c in Booking.SLOT_CHOICES],
-            'user_has_booked': False,
-            'today': timezone.now().date(),
+            **self.admin_site.each_context(request), 'examiners': examiners, 'selected_date': selected_date,
+            'week_days': week_days, 'slots': [c[0] for c in Booking.SLOT_CHOICES]
         })
+
+    def supervisor_summary_report(self, request):
+        start_date_str = request.GET.get('start_date')
+        end_date_str = request.GET.get('end_date')
+        school_filter = request.GET.get('school')
+        queryset = Booking.objects.all()
+        if start_date_str and end_date_str:
+            queryset = queryset.filter(date__range=[start_date_str, end_date_str])
+        if school_filter:
+            queryset = queryset.filter(school_name=school_filter)
+
+        report_data = queryset.values(
+            'school_name', 'examiner__sap_vendor_code', 'examiner__name', 'examiner__mobile_number'
+        ).annotate(
+            exam_count=Count('id')
+        ).order_by('school_name', 'examiner__name')
+
+        return render(request, 'admin/examiner/report.html', {
+            **self.admin_site.each_context(request),
+            'title': 'Supervisor Summary Report',
+            'report_data': report_data,
+            'school_choices': Faculty.SCHOOL_CHOICES,
+        })
+
+    def export_summary_to_excel(self, request):
+        from openpyxl.styles import Font
+        school_q = request.GET.get('school')
+        start_d = request.GET.get('start_date')
+        end_d = request.GET.get('end_date')
+
+        queryset = Booking.objects.all()
+        if school_q: queryset = queryset.filter(school_name=school_q)
+        if start_d and end_d: queryset = queryset.filter(date__range=[start_d, end_d])
+
+        report_data = queryset.values(
+            'school_name', 'examiner__sap_vendor_code', 'examiner__name'
+        ).annotate(exam_count=Count('id')).order_by('school_name', 'examiner__name')
+
+        data = [{"SR.NO.": i + 1, "School": item['school_name'], "Code": item['examiner__sap_vendor_code'],
+                 "Name": item['examiner__name'], "Exams": item['exam_count'], "Remuneration": item['exam_count'] * 300}
+                for i, item in enumerate(report_data)]
+
+        df = pd.DataFrame(data)
+        response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = f'attachment; filename=Report_{timezone.now().date()}.xlsx'
+
+        with pd.ExcelWriter(response, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, startrow=5, sheet_name='Summary')
+            ws = writer.sheets['Summary']
+            ws.cell(row=1, column=1, value="NMIMS EXAM PORTAL SUMMARY").font = Font(bold=True)
+        return response
+
+
+@admin.register(SMSLog)
+class SMSLogAdmin(admin.ModelAdmin):
+    list_display = ('booking', 'mobile_number', 'status', 'sent_at')
+    readonly_fields = ('booking', 'mobile_number', 'status', 'sent_at', 'response_body')
+
+    def has_add_permission(self, request): return False

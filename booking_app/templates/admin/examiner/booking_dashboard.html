@@ -1,297 +1,452 @@
 {% extends "admin/base_site.html" %}
 {% load booking_extras %}
+{% load static %}
 
-{% block content %}
+{% block extrahead %}
+{{ block.super }}
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
     :root {
-        --primary-dark: #1a237e;
-        --bg-light: #f4f7f9;
-        --danger-bold: #d32f2f;
-        --success-green: #2e7d32;
-        --info-blue: #0288d1;
-        --today-bg: rgba(255, 193, 7, 0.12); /* Subtle Gold for Today */
-        --today-border: #ffc107;
+        --nmims-navy: #003366;
+        --nmims-red: #be202f;
+        --success-green: #28a745;
+        --light-bg: #f8f9fc;
+        --border-light: #e0e0e0;
     }
 
-    .content-wrapper { margin-left: 0 !important; background-color: var(--bg-light) !important; padding: 0 !important; }
-    .main-footer { margin-left: 0 !important; border-top: 1px solid #ddd; }
-
-    {% if not request.user.is_superuser %}
-    .breadcrumb, .content-header { display: none !important; }
-    .main-sidebar { display: none !important; }
-    {% endif %}
-
-    /* Hero Header */
-    .hero-header {
-        background: linear-gradient(135deg, var(--primary-dark) 0%, #0d47a1 100%);
-        color: white;
-        padding: 3rem 2rem 6rem 2rem;
-        margin-bottom: -5rem;
-        border-radius: 0 0 40px 40px;
-        box-shadow: 0 4px 25px rgba(0,0,0,0.15);
+    body {
+        font-family: 'Inter', sans-serif;
+        background: var(--light-bg);
+        color: #333;
     }
 
-    /* Stats Cards */
-    .stats-container {
-        position: relative;
-        z-index: 20;
-        margin-top: -3rem;
+    #content-main {
+        padding: 20px;
+        max-width: 1400px;
+        margin: 0 auto;
     }
-    .stat-card {
-        background: white;
-        border-radius: 15px;
-        border: none;
-        box-shadow: 0 8px 20px rgba(0,0,0,0.06);
-        transition: transform 0.3s ease;
-    }
-    .stat-card:hover { transform: translateY(-5px); }
 
     .filter-card {
         background: white;
-        border-radius: 20px;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.12);
-        margin: 2rem 2.5rem;
-        position: relative;
-        z-index: 10;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+        padding: 20px;
+        margin-bottom: 25px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+        align-items: center;
     }
 
-    /* Sticky Table Styling */
-    .table-responsive {
-        max-height: 800px;
-        overflow-y: auto;
-    }
-    thead th {
-        position: sticky;
-        top: 0;
-        z-index: 100;
-        background: #f8f9fa !important;
-        box-shadow: inset 0 -1px 0 #dee2e6;
+    .search-input {
+        flex: 1;
+        min-width: 280px;
+        padding: 12px 16px;
+        border: 1px solid var(--border-light);
+        border-radius: 8px;
+        font-size: 14px;
     }
 
-    /* Today Highlighter Styling */
-    .today-header {
-        background-color: var(--today-border) !important;
-        color: #000 !important;
-    }
-    .today-cell {
-        background-color: var(--today-bg) !important;
-        border-left: 1px solid rgba(255, 193, 7, 0.3);
-        border-right: 1px solid rgba(255, 193, 7, 0.3);
-    }
-
-    .table td:first-child, .table th:first-child {
-        position: sticky;
-        left: 0;
-        z-index: 101;
-        background: #f8f9fa !important;
-        border-right: 2px solid #eee;
+    .week-nav {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: #f1f5f9;
+        padding: 10px 16px;
+        border-radius: 8px;
+        border: 1px solid var(--border-light);
+        white-space: nowrap;
     }
 
-    .examiner-card {
-        border-radius: 18px;
+    .nav-btn {
+        color: var(--nmims-navy);
+        font-size: 18px;
+        font-weight: 600;
+        text-decoration: none;
+        padding: 0 8px;
+    }
+
+    .current-week {
+        font-size: 14px;
+        font-weight: 600;
+        color: #444;
+    }
+
+    .vacant-toggle {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 500;
+        color: var(--nmims-navy);
+    }
+
+    .results-table-container {
         background: white;
-        margin: 0 2.5rem 3rem 2.5rem;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        border-radius: 12px;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.08);
         overflow: hidden;
     }
 
-    .btn-status {
-        height: 100px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        border-radius: 12px;
-        border: none;
+    #result_list {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    #result_list thead th {
+        background: var(--nmims-navy);
+        color: white;
+        padding: 14px 12px;
+        font-size: 13px;
+        font-weight: 600;
+        text-align: left;
+        white-space: nowrap;
+    }
+
+    #result_list tbody td {
+        padding: 12px;
+        border-bottom: 1px solid #f0f0f0;
+        vertical-align: middle;
+    }
+
+    .examiner-info {
+        font-weight: 600;
+        color: #222;
+    }
+
+    .code-label {
+        font-size: 12px;
+        color: #666;
+    }
+
+    .booked-slot {
+        background: #f0f0f0;
+        color: #777;
+        padding: 6px 10px;
+        border-radius: 6px;
+        font-size: 12px;
+        text-align: center;
+    }
+
+    .vacant-slot label {
+        display: block;
+        cursor: pointer;
+    }
+
+    .vacant-btn {
+        background: #f0f8ff;
+        border: 1px solid #b3d4fc;
+        color: #0056b3;
+        padding: 8px 10px;
+        border-radius: 6px;
+        text-align: center;
+        font-size: 12px;
+        transition: all 0.15s;
+    }
+
+    .vacant-btn:hover {
+        background: #e3f2fd;
+        border-color: #90c6ff;
+    }
+
+    .slot-checkbox:checked + .vacant-btn {
+        background: var(--success-green) !important;
         color: white !important;
-        font-weight: bold;
-        transition: all 0.2s ease;
+        border-color: var(--success-green) !important;
     }
 
-    /* Status Colors */
-    .btn-my-booking { background: linear-gradient(135deg, #00b4db 0%, #0083b0 100%); }
-    .btn-paid { background: linear-gradient(135deg, #56ab2f 0%, #a8e063 100%); }
-    .badge-booked-unpaid { background: var(--danger-bold); box-shadow: 0 4px 10px rgba(211, 47, 47, 0.3); }
-
-    /* Vacant Hover */
-    .btn-vacant {
-        background: #fff;
-        border: 2px dashed #ddd !important;
-        color: #666 !important;
-    }
-    .btn-vacant:hover {
-        background: #e8f5e9 !important;
-        border-color: #2e7d32 !important;
-        transform: scale(1.02);
-    }
-
-    .text-status-main { font-size: 1.1rem; font-weight: 800; }
-    .text-status-sub { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; opacity: 0.9; }
-
-    /* Legend */
-    .legend-bar {
+    .sticky-bar {
         position: fixed;
-        bottom: 20px;
+        bottom: 30px;
         left: 50%;
         transform: translateX(-50%);
-        background: white;
-        padding: 10px 25px;
+        background: #1a1a1a;
+        color: white;
+        padding: 16px 30px;
         border-radius: 50px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        z-index: 1000;
-        display: flex;
-        gap: 20px;
-        border: 1px solid #ddd;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+        display: none;
+        align-items: center;
+        justify-content: space-between;
+        z-index: 999;
+        width: 90%;
+        max-width: 700px;
+    }
+
+    .sticky-bar button {
+        background: var(--success-green);
+        border: none;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 30px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .custom-modal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.6);
+        z-index: 2000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 600px;
+        max-height: 85vh;
+        overflow-y: auto;
+        padding: 30px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        text-align: center;
+    }
+
+    .modal-btn {
+        margin: 10px;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .modal-confirm {
+        background: var(--success-green);
+        color: white;
+        border: none;
+    }
+
+    .modal-cancel {
+        background: #eee;
+        border: none;
     }
 </style>
+{% endblock %}
 
-<div class="container-fluid pb-5">
-    <div class="hero-header d-flex justify-content-between align-items-center">
-        <div>
-            <h1 class="font-weight-bold">Enrollment Dashboard</h1>
-            <p class="lead opacity-75 mb-0">Examination Personnel Management System</p>
+{% block content %}
+<div id="content-main">
+    <div class="filter-card">
+        <div style="flex: 1;">
+            <h1 style="margin: 0; color: var(--nmims-navy); font-size: 24px; font-weight: 700;">
+                Supervisor Enrollment
+            </h1>
+            <input type="text" id="examiner-search" class="search-input" placeholder="Search by name or SAP code..." onkeyup="runFilters()">
         </div>
-        <div class="text-right">
-            <div class="bg-white text-dark px-3 py-2 rounded shadow-sm d-inline-block">
-                <i class="fas fa-user-circle mr-2 text-primary"></i><strong>{{ request.user.username }}</strong>
-            </div>
-            <br>
-            <a href="{% url 'admin:logout' %}" class="text-white-50 small mt-2 d-inline-block"><i class="fas fa-sign-out-alt"></i> Sign Out</a>
+
+        <div class="week-nav">
+            <a href="?date={{ week_days.0|add_days:-7|date:'Y-m-d' }}" class="nav-btn" title="Previous Week">←</a>
+            <span class="current-week">{{ week_days.0|date:"d M" }} – {{ week_days.6|date:"d M Y" }}</span>
+            <a href="?date={{ week_days.0|add_days:7|date:'Y-m-d' }}" class="nav-btn" title="Next Week">→</a>
         </div>
+
+        <label class="vacant-toggle">
+            <input type="checkbox" id="vacant-only-check" onchange="runFilters()">
+            Show only available slots
+        </label>
+
+        <a href="{% url 'admin:supervisor_summary_report' %}" class="button" style="background: var(--nmims-navy); color: white; padding: 12px 20px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+            Summary Report
+        </a>
     </div>
 
-    <div class="row px-5 stats-container">
-        <div class="col-md-4">
-            <div class="card stat-card p-3" style="border-left: 5px solid var(--info-blue);">
-                <div class="d-flex align-items-center">
-                    <div class="rounded-circle bg-light p-3 mr-3"><i class="fas fa-bookmark text-info"></i></div>
-                    <div>
-                        <h3 class="mb-0 font-weight-bold">{{ examiners|get_user_count:request.user }}</h3>
-                        <small class="text-muted font-weight-bold">MY ENROLLMENTS</small>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card stat-card p-3" style="border-left: 5px solid var(--danger-bold);">
-                <div class="d-flex align-items-center">
-                    <div class="rounded-circle bg-light p-3 mr-3"><i class="fas fa-users text-danger"></i></div>
-                    <div>
-                        <h3 class="mb-0 font-weight-bold">{{ examiners|get_total_booked }}</h3>
-                        <small class="text-muted font-weight-bold">TOTAL BOOKED</small>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card stat-card p-3" style="border-left: 5px solid var(--success-green);">
-                <div class="d-flex align-items-center">
-                    <div class="rounded-circle bg-light p-3 mr-3"><i class="fas fa-check-circle text-success"></i></div>
-                    <div>
-                        <h3 class="mb-0 font-weight-bold">{{ examiners|get_total_vacant }}</h3>
-                        <small class="text-muted font-weight-bold">SLOTS AVAILABLE</small>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="card filter-card p-4">
-        <div class="row align-items-end">
-            <div class="col-md-3">
-                <form method="GET" id="filterForm" class="m-0">
-                    <label class="small font-weight-bold text-muted text-uppercase">Calendar Week</label>
-                    <div class="input-group">
-                        <input type="date" name="date" class="form-control border-0 bg-light" value="{{ selected_date|date:'Y-m-d' }}">
-                        <div class="input-group-append">
-                            <a href="?date={{ today|date:'Y-m-d' }}" class="btn btn-outline-secondary border-0 bg-light" title="Go to Today">
-                                <i class="fas fa-calendar-day"></i>
-                            </a>
-                        </div>
-                    </div>
-            </div>
-            <div class="col-md-3">
-                    <label class="small font-weight-bold text-muted text-uppercase">Examiner Search</label>
-                    <select name="examiner_id" class="form-control border-0 bg-light">
-                        <option value="">All Examiners</option>
-                        {% for ex in all_examiners %}
-                            <option value="{{ ex.id }}" {% if ex.id == selected_examiner %}selected{% endif %}>{{ ex.name }}</option>
-                        {% endfor %}
-                    </select>
-            </div>
-            <div class="col-md-3">
-                    <button type="submit" class="btn btn-primary btn-block shadow-sm py-2">
-                        <i class="fas fa-sync-alt mr-2"></i>Update View
-                    </button>
-                </form>
-            </div>
-            <div class="col-md-3">
-                <a href="{% url 'admin:export_all_bookings_excel' %}" class="btn btn-success btn-block shadow-sm py-2">
-                    <i class="fas fa-file-excel mr-2"></i>Download Excel
-                </a>
-            </div>
-        </div>
-    </div>
-
-    {% for examiner in examiners %}
-    <div class="card examiner-card">
-        <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
-            <h5 class="mb-0 font-weight-bold text-primary">{{ examiner.name }}</h5>
-            <span class="badge badge-secondary px-3 py-2">SAP: {{ examiner.sap_vendor_code }}</span>
-        </div>
-        <div class="table-responsive">
-            <table class="table text-center mb-0 border-top">
+    <div class="results-table-container">
+        <form id="booking-form" method="POST" action="{% url 'admin:bulk_enroll_slots' %}">
+            {% csrf_token %}
+            <table id="result_list">
                 <thead>
-                    <tr class="bg-light">
-                        <th class="py-3">SLOT</th>
+                    <tr>
+                        <th style="width: 280px;">Supervisor</th>
                         {% for day in week_days %}
-                            <th class="py-3 {% if day == today %}today-header{% endif %}">
-                                {{ day|date:"D" }}<br><small class="{% if day == today %}text-dark{% else %}text-muted{% endif %}">{{ day|date:"d M" }}</small>
-                            </th>
+                            <th>{{ day|date:"D, d M" }}</th>
                         {% endfor %}
                     </tr>
                 </thead>
                 <tbody>
-                    {% for slot in slots %}
-                    <tr>
-                        <td class="align-middle font-weight-bold text-muted small">{{ slot }}</td>
-                        {% for day in week_days %}
-                        <td class="p-2 {% if day == today %}today-cell{% endif %}">
-                            {% week_check examiner day slot as b %}
-                            {% if b %}
-                                {% if b.booked_by == request.user or request.user.is_superuser %}
-                                    <a href="{% url 'admin:booking_app_booking_change' b.id %}"
-                                       class="btn btn-block btn-status {% if b.is_paid %}btn-paid{% else %}btn-my-booking{% endif %} shadow-sm">
-                                        <span class="text-status-main">{{ b.school_name }}</span>
-                                        <span class="text-status-sub">BOOKED</span>
-                                    </a>
-                                {% else %}
-                                    <div class="btn-status rounded badge-booked-unpaid">
-                                        <span class="text-status-main">{{ b.school_name }}</span>
-                                        <span class="text-status-sub">BOOKED</span>
-                                    </div>
-                                {% endif %}
-                            {% else %}
-                                <a href="{% url 'admin:booking_app_booking_add' %}?examiner={{ examiner.id }}&date={{ day|date:'Y-m-d' }}&slot={{ slot }}"
-                                   class="btn btn-block btn-status btn-vacant">
-                                    <span class="text-status-main text-success">VACANT</span>
-                                    <span class="text-status-sub text-muted">Enroll</span>
-                                </a>
+                    {% for examiner in examiners %}
+                    <tr class="examiner-row" data-search="{{ examiner.name|lower }} {{ examiner.sap_vendor_code|lower }}">
+                        <td>
+                            <div class="examiner-info">{{ examiner.name }}</div>
+                            <div class="code-label">SAP: {{ examiner.sap_vendor_code }}</div>
+                            {% if examiner.mobile_number %}
+                                <div class="code-label" style="color: var(--success-green);">📞 {{ examiner.mobile_number }}</div>
                             {% endif %}
+                            <a href="#" onclick="selectAllVacant(this)" style="color: var(--nmims-red); font-size: 12px; display: block; margin-top: 8px;">
+                                Select all available
+                            </a>
+                        </td>
+                        {% for day in week_days %}
+                        <td>
+                            <div style="display: flex; flex-direction: column; gap: 6px;">
+                                {% for slot_code in slots %}
+                                    {% week_check examiner day slot_code as booking %}
+                                    {% if booking %}
+                                        <div class="booked-slot" title="Booked by {{ booking.school_name|default:'Unknown' }}">
+                                            {{ slot_code }}
+                                        </div>
+                                    {% else %}
+                                        <label>
+                                            <input type="checkbox" name="selected_slots" value="{{ examiner.id }}|{{ day|date:'Y-m-d' }}|{{ slot_code }}" class="slot-checkbox" style="display:none;" onchange="updateStickyBar()">
+                                            <div class="vacant-btn">{{ slot_code }}</div>
+                                        </label>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
                         </td>
                         {% endfor %}
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
+
+            <div id="stickyBar" class="sticky-bar">
+                <div>Selected: <strong id="slot-count">0</strong> slots</div>
+                <div>
+                    <button type="button" onclick="openModal()" class="btn">Confirm Booking</button>
+                    <button type="button" onclick="location.reload()" style="margin-left: 10px;">Reset</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Confirmation Modal with Summary -->
+<div id="confirmModal" class="custom-modal">
+    <div class="modal-content">
+        <h2 style="margin-top: 0;">Confirm Multiple Bookings</h2>
+        <p style="margin: 15px 0;">
+            You are about to book <strong id="modal-total-count">0</strong> slots
+            across <strong id="modal-supervisor-count">0</strong> supervisors.
+        </p>
+
+        <!-- Summary Table -->
+        <div style="max-height: 300px; overflow-y: auto; margin: 20px 0; border: 1px solid #eee; border-radius: 8px; background: #f9f9f9;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                <thead>
+                    <tr style="background: #eef2ff;">
+                        <th style="padding: 10px; text-align: left;">Supervisor</th>
+                        <th style="padding: 10px; text-align: left;">Date</th>
+                        <th style="padding: 10px; text-align: center;">Slots</th>
+                    </tr>
+                </thead>
+                <tbody id="modal-summary-rows"></tbody>
+            </table>
+        </div>
+
+        <p style="font-size: 13px; color: #d9534f; margin: 20px 0;">
+            <strong>Note:</strong> This action cannot be undone. Please review carefully.
+        </p>
+
+        <div style="display: flex; gap: 15px; justify-content: center;">
+            <button onclick="document.getElementById('booking-form').submit()"
+                    style="flex: 1; background: var(--success-green); color: white; padding: 14px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                Confirm All Bookings
+            </button>
+            <button onclick="closeModal()"
+                    style="flex: 1; background: #eee; color: #333; padding: 14px; border: none; border-radius: 8px; cursor: pointer;">
+                Cancel
+            </button>
         </div>
     </div>
-    {% endfor %}
 </div>
 
-<div class="legend-bar small font-weight-bold text-muted">
-    <div class="d-flex align-items-center"><span class="mr-2 rounded-circle" style="width:12px; height:12px; background:#00b4db;"></span> SCHOOL ENROLLED</div>
-    <div class="d-flex align-items-center"><span class="mr-2 rounded-circle" style="width:12px; height:12px; background:#d32f2f;"></span> OTHER SCHOOL</div>
-    <div class="d-flex align-items-center"><span class="mr-2 rounded-circle" style="width:12px; height:12px; border:1px solid #ddd; background:#fff;"></span> VACANT</div>
-</div>
+<script>
+// Filters - FIXED to correctly hide fully booked rows
+function runFilters() {
+    const query = document.getElementById('examiner-search').value.toLowerCase().trim();
+    const vacantOnly = document.getElementById('vacant-only-check').checked;
 
+    document.querySelectorAll('.examiner-row').forEach(row => {
+        const text = row.dataset.search.toLowerCase();
+        const hasVacant = row.querySelector('.vacant-btn') !== null;
+
+        const matchesSearch = query === '' || text.includes(query);
+        const allowedByVacant = !vacantOnly || hasVacant;
+
+        if (matchesSearch && allowedByVacant) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+
+    updateStickyBar();
+}
+
+// Sticky bar update
+function updateStickyBar() {
+    const count = document.querySelectorAll('.slot-checkbox:checked').length;
+    document.getElementById('slot-count').innerText = count;
+    document.getElementById('stickyBar').style.display = count > 0 ? 'flex' : 'none';
+}
+
+// Select all vacant slots in a row
+function selectAllVacant(link) {
+    const row = link.closest('tr');
+    const cbs = row.querySelectorAll('.slot-checkbox');
+    const shouldCheck = !Array.from(cbs).every(cb => cb.checked);
+    cbs.forEach(cb => cb.checked = shouldCheck);
+    updateStickyBar();
+}
+
+// Modal with detailed summary before submit
+function openModal() {
+    const checked = document.querySelectorAll('.slot-checkbox:checked');
+    if (checked.length === 0) {
+        alert("No slots selected.");
+        return;
+    }
+
+    // Group selections: supervisor → date → list of slots
+    const summary = {};
+    const supervisors = new Set();
+
+    checked.forEach(checkbox => {
+        const [examinerId, date, slot] = checkbox.value.split('|');
+        const row = checkbox.closest('tr');
+        const name = row.querySelector('.examiner-info')?.innerText.trim() || 'Unknown';
+
+        supervisors.add(name);
+
+        if (!summary[name]) summary[name] = {};
+        if (!summary[name][date]) summary[name][date] = [];
+        summary[name][date].push(slot);
+    });
+
+    // Build summary table rows
+    let rowsHTML = '';
+    Object.keys(summary).sort().forEach(name => {
+        Object.keys(summary[name]).sort().forEach(date => {
+            const slotsList = summary[name][date].join(', ');
+            rowsHTML += `
+                <tr>
+                    <td style="padding: 10px; border-bottom: 1px solid #eee;">${name}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #eee;">${date}</td>
+                    <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: center;">
+                        <span style="background: #e3f2fd; padding: 4px 10px; border-radius: 12px; color: #0056b3;">
+                            ${slotsList}
+                        </span>
+                    </td>
+                </tr>
+            `;
+        });
+    });
+
+    // Update modal content
+    document.getElementById('modal-total-count').innerText = checked.length;
+    document.getElementById('modal-supervisor-count').innerText = supervisors.size;
+    document.getElementById('modal-summary-rows').innerHTML = rowsHTML || '<tr><td colspan="3" style="text-align:center; padding:20px;">No details available</td></tr>';
+
+    // Show the modal
+    document.getElementById('confirmModal').style.display = 'flex';
+}
+
+function closeModal() {
+    document.getElementById('confirmModal').style.display = 'none';
+}
+
+// Initial call on page load
+document.addEventListener('DOMContentLoaded', updateStickyBar);
+</script>
 {% endblock %}

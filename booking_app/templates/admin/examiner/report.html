@@ -1,0 +1,110 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrahead %}
+{{ block.super }}
+<style>
+    .filter-section { background: #f8f9fa; padding: 20px; margin-bottom: 20px; border-radius: 8px; border: 1px solid #ddd; }
+    .report-header { background: #fff; padding: 15px; border-bottom: 1px solid #ccc; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; border-radius: 8px; }
+    .report-table { width: 100%; border-collapse: collapse; background: white; border: 1.5px solid #333; }
+    .report-table th { background: #003366; color: white; border: 1px solid #333; padding: 12px; text-align: center; font-weight: bold; text-transform: uppercase; font-size: 11px; }
+    .report-table td { border: 1px solid #ccc; padding: 10px; vertical-align: middle; color: #333; font-size: 13px; }
+    .school-badge { background: #eef2ff; color: #4338ca; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 800; border: 1px solid #e0e7ff; }
+    .total-row { background: #f8f9fa; font-weight: bold; }
+    @media print { .filter-section, .btn-excel, .btn-print { display: none !important; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <div class="filter-section module">
+        <form method="get" style="display: flex; gap: 15px; align-items: flex-end; flex-wrap: wrap;">
+            <div>
+                <label style="display: block; font-weight: bold; margin-bottom: 5px;">School:</label>
+                <select name="school" style="padding: 8px; border-radius: 4px; border: 1px solid #ccc; width: 180px;">
+                    <option value="">-- All Schools --</option>
+                    {% for code, name in school_choices %}
+                        <option value="{{ code }}" {% if request.GET.school == code %}selected{% endif %}>{{ code }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label style="display: block; font-weight: bold; margin-bottom: 5px;">From Date:</label>
+                <input type="date" name="start_date" value="{{ request.GET.start_date }}" style="padding: 7px; border-radius: 4px; border: 1px solid #ccc;">
+            </div>
+            <div>
+                <label style="display: block; font-weight: bold; margin-bottom: 5px;">To Date:</label>
+                <input type="date" name="end_date" value="{{ request.GET.end_date }}" style="padding: 7px; border-radius: 4px; border: 1px solid #ccc;">
+            </div>
+            <button type="submit" style="background: #003366; color: white; padding: 9px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">🔍 Filter</button>
+            <a href="." style="padding: 9px 15px; color: #666; text-decoration: none;">Reset</a>
+        </form>
+    </div>
+
+    <div class="report-header module">
+        <h2 style="margin: 0; color: #003366;">{{ title }}</h2>
+        <div style="display: flex; gap: 10px;">
+            <a href="{% url 'admin:export_summary_excel' %}?school={{ request.GET.school }}&start_date={{ request.GET.start_date }}&end_date={{ request.GET.end_date }}"
+               class="btn-excel" style="background: #217346; color: white; padding: 10px; border-radius: 4px; text-decoration: none; font-weight: bold;">📗 Export Filtered Excel</a>
+            <button onclick="window.print()" class="btn-print" style="background: #444; color: white; padding: 10px; border-radius: 4px; border: none; cursor: pointer;">🖨️ Print</button>
+        </div>
+    </div>
+
+    <div class="results">
+        <table class="report-table">
+            <thead>
+                <tr>
+                    <th style="width: 5%;">#</th>
+                    <th style="width: 15%;">School</th>
+                    <th style="width: 12%;">Vendor Code</th>
+                    <th style="width: 30%;">Supervisor Name</th>
+                    <th style="width: 13%;">Contact</th>
+                    <th style="width: 10%;">Exams</th>
+                    <th style="width: 15%;">Total (₹)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in report_data %}
+                <tr>
+                    <td style="text-align: center;">{{ forloop.counter }}</td>
+                    <td style="text-align: center;">
+                        <span class="school-badge">{{ item.school_name|default:"N/A" }}</span>
+                    </td>
+                    <td style="text-align: center; font-family: monospace;">{{ item.sap_vendor_code }}</td>
+                    <td style="text-align: left; padding-left: 15px; font-weight: 600;">{{ item.name }}</td>
+                    <td style="text-align: center;">{{ item.mobile_number|default:"-" }}</td>
+                    <td style="text-align: center;">{{ item.exam_count }}</td>
+                    <td style="text-align: center; font-weight: bold; color: #be202f;">
+                        ₹{% widthratio item.exam_count 1 300 %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7" style="text-align: center; padding: 30px;">No records found for selected filters.</td></tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="total-row">
+                    <td colspan="5" style="text-align: right; padding-right: 20px;">GRAND TOTAL:</td>
+                    <td style="text-align: center;" id="total-exams">0</td>
+                    <td style="text-align: center; color: #be202f;" id="total-amount">₹0</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        let totalExams = 0;
+        document.querySelectorAll(".report-table tbody tr").forEach(row => {
+            let countCell = row.cells[5];
+            if (countCell) {
+                let count = parseInt(countCell.innerText);
+                if (!isNaN(count)) totalExams += count;
+            }
+        });
+        document.getElementById("total-exams").innerText = totalExams;
+        document.getElementById("total-amount").innerText = "₹" + (totalExams * 300).toLocaleString('en-IN');
+    });
+</script>
+{% endblock %}

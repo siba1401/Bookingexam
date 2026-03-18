@@ -1,4 +1,5 @@
 from django import template
+from datetime import timedelta
 
 register = template.Library()
 
@@ -14,8 +15,6 @@ def week_check(examiner, day, slot_code):
             if b.date == day and b.slot == slot_code:
                 return b
     return None
-
-# --- NEW PROFESSIONAL FILTERS FOR STATS ---
 
 @register.filter
 def get_user_count(examiners, user):
@@ -36,9 +35,9 @@ def get_total_booked(examiners):
     return count
 
 @register.filter
-def get_total_vacant(examiners):
-    """Calculates available slots (Assuming 3 slots per day for 7 days = 21 per examiner)."""
-    # Adjust '21' if your slots per week are different
-    total_possible = len(examiners) * 21
-    booked = get_total_booked(examiners)
-    return max(0, total_possible - booked)
+def add_days(date, days):
+    """Adds (or subtracts) a number of days to a date object."""
+    try:
+        return date + timedelta(days=int(days))
+    except (ValueError, TypeError):
+        return date

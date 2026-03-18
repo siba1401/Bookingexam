@@ -6,8 +6,23 @@ import datetime
 
 
 class Faculty(AbstractUser):
+    SCHOOL_CHOICES = [
+        ('MPSTME', 'Mukesh Patel School of Technology Management & Engineering'),
+        ('ASMSOC', 'Anil Surendra Modi School of Commerce'),
+        ('SBM', 'School of Business Management'),
+        ('SAMSOE', 'Sarla Anil Modi School of Economics'),
+        ('SPPSPTM', 'Shobhaben Pratapbhai Patel School of Pharmacy & Technology Management'),
+        ('KPMSOL', 'Kirit P. Mehta School of Law'),
+        ('SDSOS', 'Sunandan Divatia School of Science'),
+        ('SOD', 'School of Design'),
+        ('SOHM', 'School of Hospitality Management'),
+        ('SOMSR', 'School of Mathematical Sciences'),
+        ('SOPC', 'School of Performing Arts'),
+        ('STME', 'School of Technology Management & Engineering'),
+    ]
+
     middle_name = models.CharField(max_length=100, null=True, blank=True)
-    department = models.CharField(max_length=100, null=True, blank=True)
+    school = models.CharField(max_length=10, choices=SCHOOL_CHOICES, default='MPSTME')
     registered_date = models.DateTimeField(auto_now_add=True)
     otp = models.CharField(max_length=6, null=True, blank=True)
     otp_created_at = models.DateTimeField(null=True, blank=True)
@@ -24,27 +39,26 @@ class Faculty(AbstractUser):
 class Examiner(models.Model):
     name = models.CharField(max_length=255)
     sap_vendor_code = models.CharField(max_length=50, unique=True)
+    mobile_number = models.CharField(max_length=15, null=True, blank=True)
     creator = models.ForeignKey(Faculty, on_delete=models.SET_NULL, null=True, blank=True)
+
+    def get_clean_mobile(self):
+        """Returns a 10-digit mobile number by removing +91 or 91 prefixes."""
+        if not self.mobile_number:
+            return None
+        num = str(self.mobile_number).replace(" ", "").strip()
+        if num.startswith('+91'):
+            return num[3:]
+        elif len(num) == 12 and num.startswith('91'):
+            return num[2:]
+        return num
 
     def __str__(self):
         return f"{self.name} ({self.sap_vendor_code})"
 
 
 class Booking(models.Model):
-    SCHOOL_CHOICES = [
-        ('MPSTME', 'Mukesh Patel School of Technology Management & Engineering'),
-        ('ASMSOC', 'Anil Surendra Modi School of Commerce'),
-        ('SBM', 'School of Business Management'),
-        ('SAMSOE', 'Sarla Anil Modi School of Economics'),
-        ('SPPSPTM', 'Shobhaben Pratapbhai Patel School of Pharmacy & Technology Management'),
-        ('KPMSOL', 'Kirit P. Mehta School of Law'),
-        ('SDSOS', 'Sunandan Divatia School of Science'),
-        ('SOD', 'School of Design'),
-        ('SOHM', 'School of Hospitality Management'),
-        ('SOMSR', 'School of Mathematical Sciences'),
-        ('SOPC', 'School of Performing Arts'),
-        ('STME', 'School of Technology Management & Engineering'),
-    ]
+    SCHOOL_CHOICES = Faculty.SCHOOL_CHOICES
 
     SLOT_CHOICES = [
         ('09:00-10:00', '09:00 AM - 10:00 AM'),
@@ -61,7 +75,6 @@ class Booking(models.Model):
     date = models.DateField()
     slot = models.CharField(max_length=20, choices=SLOT_CHOICES)
     school_name = models.CharField(max_length=10, choices=SCHOOL_CHOICES, default='MPSTME')
-
     is_paid = models.BooleanField(default=False)
     transaction_id = models.CharField(max_length=100, null=True, blank=True, verbose_name="Transaction ID")
     num_supervision = models.PositiveIntegerField(default=1, verbose_name="No of supervision")
@@ -75,21 +88,16 @@ class Booking(models.Model):
         return self.num_supervision * self.rate_per_supervision
 
     def clean(self):
-        # 1. Enforce Transaction ID if Paid
+        # Validation for Transaction ID when marked as paid
         if self.is_paid and not self.transaction_id:
             raise ValidationError({'transaction_id': "Transaction ID is compulsory when 'Is Paid' is checked."})
 
-        # 2. Conflict Check (STOPS different schools from booking the same examiner)
-        overlap = Booking.objects.filter(
-            examiner=self.examiner,
-            date=self.date,
-            slot=self.slot
-        ).exclude(pk=self.pk)
-
+        # Check for overlapping bookings
+        overlap = Booking.objects.filter(examiner=self.examiner, date=self.date, slot=self.slot).exclude(pk=self.pk)
         if overlap.exists():
             existing = overlap.first()
             raise ValidationError(
-                f"Conflict! This examiner is already booked by {existing.get_school_name_display()} for this slot.")
+                f"Conflict! This supervisor is already booked by {existing.get_school_name_display()} for this slot.")
 
     def save(self, *args, **kwargs):
         self.full_clean()
@@ -97,3 +105,18 @@ class Booking(models.Model):
 
     def __str__(self):
         return f"{self.examiner.name} | {self.date} | {self.slot}"
+
+
+class SMSLog(models.Model):
+    booking = models.ForeignKey('Booking', on_delete=models.CASCADE, related_name='sms_logs')
+    mobile_number = models.CharField(max_length=15)
+    sent_at = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20)
+    response_body = models.TextField(blank=True, null=True)
+
+    class Meta:
+        verbose_name = "SMS Log"
+        verbose_name_plural = "SMS Logs"
+
+    def __str__(self):
+        return f"SMS to {self.mobile_number} - {self.status}"
