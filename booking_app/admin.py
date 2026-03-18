@@ -114,26 +114,37 @@ class BookingAdmin(admin.ModelAdmin):
     # CRITICAL: This method must be inside the class and named exactly as called
     def _execute_sms_send(self, booking_obj, phone, message):
         url = "https://www.fast2sms.com/dev/bulkV2"
-        # Match your settings.py variable
-        api_key = getattr(settings, 'FAST2SMS_KEY', None)
+        # 1. Use os.environ.get for better Vercel reliability
+        import os
+        api_key = os.environ.get('FAST2SMS_KEY') 
 
         if not phone or not api_key:
             error = f"Fail: Phone={phone}, KeyFound={'Yes' if api_key else 'No'}"
             SMSLog.objects.create(booking=booking_obj, status="Failed", response_body=error)
             return
 
+        # 2. Change to form-encoded payload for Fast2SMS compatibility
         payload = {
             "route": "q",
             "message": message,
             "language": "english",
             "numbers": str(phone),
         }
-        headers = {"authorization": api_key, "Content-Type": "application/json"}
+        
+        headers = {
+            "authorization": api_key,
+            "Content-Type": "application/x-www-form-urlencoded", # Changed from JSON
+            "Cache-Control": "no-cache"
+        }
 
         try:
-            response = requests.post(url, json=payload, headers=headers)
+            # 3. Use 'data=' instead of 'json='
+            response = requests.post(url, data=payload, headers=headers, timeout=10)
             res_data = response.json()
+            
+            # 4. Success check
             status = "Success" if res_data.get("return") else "Failed"
+            
             SMSLog.objects.create(
                 booking=booking_obj,
                 mobile_number=phone,
@@ -142,6 +153,8 @@ class BookingAdmin(admin.ModelAdmin):
             )
         except Exception as e:
             SMSLog.objects.create(booking=booking_obj, status="Failed", response_body=str(e))
+
+
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
