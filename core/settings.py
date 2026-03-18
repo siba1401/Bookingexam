@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+import dj_database_url
 
 # Load .env at the very top
 load_dotenv()
@@ -8,13 +9,14 @@ FAST2SMS_KEY = os.getenv('FAST2SMS_API_KEY')
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.getenv('SECRET_KEY', 'your-fallback-key')
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-your-secret-key-here')
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '.vercel.app']
-#ALLOWED_HOSTS = ['localhost','127.0.0.1','10.125.66.231','.onrender.com',  # This allows all subdomains on Render]
+
+# Optimized for Vercel
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '.vercel.app', '.now.sh']
 
 INSTALLED_APPS = [
-    'jazzmin',
+    'jazzmin',  # Must be before admin
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -24,15 +26,14 @@ INSTALLED_APPS = [
     'booking_app',
 ]
 
-# CRITICAL: Order matters here to fix your E408, E409, E410 errors
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware', # Must be before Auth
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Best place for WhiteNoise
+    'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware', # Required for Admin
-    'django.contrib.messages.middleware.MessageMiddleware', # Required for Admin
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
@@ -40,20 +41,7 @@ ROOT_URLCONF = 'core.urls'
 AUTH_USER_MODEL = 'booking_app.Faculty'
 WSGI_APPLICATION = 'core.wsgi.application'
 
-import dj_database_url
-
-# Use Render's DB if available, otherwise fallback to your local Postgres
-#DATABASES = {
-    #'default': dj_database_url.config(
-        #default=os.getenv('DATABASE_URL', 'postgres://postgres:admin1401@127.0.0.1:5432/booking_db'),
-        #conn_max_age=600
-    #)
-#}
-
-import dj_database_url
-
-# This tries to get 'DATABASE_URL' from Vercel/Neon environment variables
-# If it doesn't find it, it falls back to your local manual config
+# --- DATABASE CONFIG ---
 DATABASE_URL = os.getenv('DATABASE_URL')
 
 if DATABASE_URL:
@@ -65,7 +53,6 @@ if DATABASE_URL:
         )
     }
 else:
-    # Manual fallback for local development
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
@@ -77,7 +64,6 @@ else:
         }
     }
 
-# Fixes E403: Admin needs this exact structure
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
@@ -94,20 +80,25 @@ TEMPLATES = [
     },
 ]
 
+# --- STATIC FILES CONFIG (FIXED FOR JAZZMIN) ---
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-# Add this check so the build doesn't crash if 'static' folder is missing
-STATIC_STATIC_DIR = BASE_DIR / "static"
-if STATIC_STATIC_DIR.exists():
-    STATICFILES_DIRS = [STATIC_STATIC_DIR]
+# Tell Django to look in the main 'static' folder if it exists
+STATICFILES_DIRS = [os.path.join(BASE_DIR, 'static')] if os.path.exists(os.path.join(BASE_DIR, 'static')) else []
 
+# WhiteNoise settings to handle Jazzmin and production CSS
 STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"
+WHITENOISE_USE_FINDERS = True
+WHITENOISE_MANIFEST_STRICT = False
 
+# Ensure Django finds Jazzmin inside the site-packages
+STATICFILES_FINDERS = [
+    'django.contrib.staticfiles.finders.FileSystemFinder',
+    'django.contrib.staticfiles.finders.AppDirectoriesFinder',
+]
 
-
-# --- EMAIL CONFIG (Fixes ConnectionRefusedError) ---
-# For testing without a crash, use 'console'. Change to 'smtp' for real emails.
+# --- EMAIL CONFIG ---
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
@@ -115,8 +106,7 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 
-# --- Jazzmin Traditional Look ---
-# core/settings.py
+# --- JAZZMIN CONFIG ---
 JAZZMIN_SETTINGS = {
     "site_title": "NMIMS Admin",
     "site_header": "NMIMS Portal",
@@ -124,40 +114,23 @@ JAZZMIN_SETTINGS = {
     "site_logo": "images/university_logo.png",
     "login_logo": "images/university_logo.png",
     "welcome_sign": "Authorized Access: NMIMS Examination Portal",
-    "copyright": "SVKM's NMIMS 2026",  # Added official university prefix
-    "search_model": ["booking_app.Examiner", "booking_app.Booking"],  # Expanded search
+    "copyright": "SVKM's NMIMS 2026",
+    "search_model": ["booking_app.Faculty", "booking_app.Booking"],
     "user_avatar": None,
-
     "changeform_format": "horizontal_tabs",
     "navigation_expanded": True,
     "show_sidebar": True,
     "show_ui_builder": False,
-
-    # Professional top-menu links
     "topmenu_links": [
         {"name": "Home", "url": "admin:index", "permissions": ["auth.view_user"]},
         {"name": "Support", "url": "mailto:support@nmims.edu", "new_window": True},
         {"model": "booking_app.Booking"},
     ],
-
-    "custom_links": {
-        "booking_app": [
-            {
-                "name": "Live Booking Dashboard",
-                "url": "admin:booking_dashboard",
-                "icon": "fas fa-chalkboard-teacher",
-                "permissions": ["booking_app.view_booking"]
-            },
-        ],
-    },
-
     "icons": {
         "auth.user": "fas fa-user-shield",
         "booking_app.Faculty": "fas fa-chalkboard-teacher",
-        "booking_app.Examiner": "fas fa-user-tie",
-        "booking_app.Booking": "fas fa-list-alt",  # Changed for variety
+        "booking_app.Booking": "fas fa-list-alt",
     },
-
     "default_ui_tweaks": {
         "navbar": "navbar-navy navbar-dark",
         "sidebar": "sidebar-light-navy",
@@ -165,24 +138,14 @@ JAZZMIN_SETTINGS = {
         "navbar_fixed": True,
         "sidebar_fixed": True,
         "brand_colour": "navbar-navy",
-        "body_small_text": False,
     },
 }
 
 JAZZMIN_UI_TWEAKS = {
-    "theme": "flatly",  # Professional academic typography
-    "dark_mode_theme": None,
-    "button_classes": {
-        "primary": "btn-primary",
-        "secondary": "btn-secondary",
-        "info": "btn-info",
-        "warning": "btn-warning",
-        "danger": "btn-danger",
-        "success": "btn-success"
-    }
+    "theme": "flatly",
 }
 
-# Django 6.0 Compatibility
+# --- PATCH FOR DJANGO 6.0 ---
 from django.utils import html
 from django.utils.safestring import mark_safe
 _orig = html.format_html
@@ -190,7 +153,3 @@ def patched(*args, **kwargs):
     if len(args) == 1 and not kwargs: return mark_safe(args[0])
     return _orig(*args, **kwargs)
 html.format_html = patched
-
-
-WHITENOISE_USE_FINDERS = True
-WHITENOISE_MANIFEST_STRICT = False
