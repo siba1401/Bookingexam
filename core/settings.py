@@ -95,9 +95,17 @@ TEMPLATES = [
 ]
 
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+# Add this check so the build doesn't crash if 'static' folder is missing
+STATIC_STATIC_DIR = BASE_DIR / "static"
+if STATIC_STATIC_DIR.exists():
+    STATICFILES_DIRS = [STATIC_STATIC_DIR]
+
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
+
+
 # --- EMAIL CONFIG (Fixes ConnectionRefusedError) ---
 # For testing without a crash, use 'console'. Change to 'smtp' for real emails.
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -182,3 +190,7 @@ def patched(*args, **kwargs):
     if len(args) == 1 and not kwargs: return mark_safe(args[0])
     return _orig(*args, **kwargs)
 html.format_html = patched
+
+
+WHITENOISE_USE_FINDERS = True
+WHITENOISE_MANIFEST_STRICT = False
