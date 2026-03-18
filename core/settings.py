@@ -14,7 +14,7 @@ ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '.vercel.app']
 #ALLOWED_HOSTS = ['localhost','127.0.0.1','10.125.66.231','.onrender.com',  # This allows all subdomains on Render]
 
 INSTALLED_APPS = [
-    #'jazzmin',
+    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
