@@ -109,7 +109,7 @@ EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 # --- JAZZMIN CONFIG ---
 JAZZMIN_SETTINGS = {
     "site_title": "NMIMS Admin",
-    "site_header": "NMIMS Portal",
+    
     "site_brand": "NMIMS EXAM PORTAL",
     "site_logo": "images/university_logo.png",
     "login_logo": "images/university_logo.png",
