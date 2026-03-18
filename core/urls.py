@@ -2,6 +2,8 @@ from django.contrib import admin
 from django.urls import path, include
 from django.shortcuts import redirect
 from django.contrib.auth import views as auth_views
+from django.conf import settings  # NEW
+from django.conf.urls.static import static  # NEW
 from booking_app.views import (
     faculty_login_view,
     verify_otp_view,
@@ -16,7 +18,7 @@ urlpatterns = [
     path('admin/verify-otp/', verify_otp_view, name='verify_otp'),
     path('admin/logout/', logout_view, name='manual_logout'),
 
-    # Branded Password Reset Workflow (Overriding defaults for your folder structure)
+    # Branded Password Reset Workflow
     path('accounts/password_reset/', auth_views.PasswordResetView.as_view(
         template_name='admin/examiner/password_reset_form.html',
         html_email_template_name='admin/examiner/password_reset_email.html',
@@ -39,3 +41,6 @@ urlpatterns = [
     path('accounts/', include('django.contrib.auth.urls')),
     path('admin/', admin.site.urls),
 ]
+
+# CRITICAL: This allows Vercel to find the Jazzmin CSS files
+urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
