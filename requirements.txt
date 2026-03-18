@@ -1,6 +1,7 @@
 asgiref==3.8.1
 dj-database-url==2.3.0
 Django==5.1.0
+django-jazzmin==3.0.1
 et-xmlfile==2.0.0
 numpy==2.2.3
 openpyxl==3.1.5
