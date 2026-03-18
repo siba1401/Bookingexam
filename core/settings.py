@@ -114,23 +114,40 @@ JAZZMIN_SETTINGS = {
     "site_logo": "images/university_logo.png",
     "login_logo": "images/university_logo.png",
     "welcome_sign": "Authorized Access: NMIMS Examination Portal",
-    "copyright": "SVKM's NMIMS 2026",
-    "search_model": ["booking_app.Faculty", "booking_app.Booking"],
+    "copyright": "SVKM's NMIMS 2026",  # Added official university prefix
+    "search_model": ["booking_app.Examiner", "booking_app.Booking"],  # Expanded search
     "user_avatar": None,
+
     "changeform_format": "horizontal_tabs",
     "navigation_expanded": True,
     "show_sidebar": True,
     "show_ui_builder": False,
+
+    # Professional top-menu links
     "topmenu_links": [
         {"name": "Home", "url": "admin:index", "permissions": ["auth.view_user"]},
         {"name": "Support", "url": "mailto:support@nmims.edu", "new_window": True},
         {"model": "booking_app.Booking"},
     ],
+
+    "custom_links": {
+        "booking_app": [
+            {
+                "name": "Live Booking Dashboard",
+                "url": "admin:booking_dashboard",
+                "icon": "fas fa-chalkboard-teacher",
+                "permissions": ["booking_app.view_booking"]
+            },
+        ],
+    },
+
     "icons": {
         "auth.user": "fas fa-user-shield",
         "booking_app.Faculty": "fas fa-chalkboard-teacher",
-        "booking_app.Booking": "fas fa-list-alt",
+        "booking_app.Examiner": "fas fa-user-tie",
+        "booking_app.Booking": "fas fa-list-alt",  # Changed for variety
     },
+
     "default_ui_tweaks": {
         "navbar": "navbar-navy navbar-dark",
         "sidebar": "sidebar-light-navy",
@@ -138,11 +155,21 @@ JAZZMIN_SETTINGS = {
         "navbar_fixed": True,
         "sidebar_fixed": True,
         "brand_colour": "navbar-navy",
+        "body_small_text": False,
     },
 }
 
 JAZZMIN_UI_TWEAKS = {
-    "theme": "flatly",
+    "theme": "flatly",  # Professional academic typography
+    "dark_mode_theme": None,
+    "button_classes": {
+        "primary": "btn-primary",
+        "secondary": "btn-secondary",
+        "info": "btn-info",
+        "warning": "btn-warning",
+        "danger": "btn-danger",
+        "success": "btn-success"
+    }
 }
 
 # --- PATCH FOR DJANGO 6.0 ---
