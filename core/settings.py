@@ -102,7 +102,7 @@ STATIC_STATIC_DIR = BASE_DIR / "static"
 if STATIC_STATIC_DIR.exists():
     STATICFILES_DIRS = [STATIC_STATIC_DIR]
 
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"
 
 
 
