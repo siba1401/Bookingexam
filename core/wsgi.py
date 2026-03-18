@@ -1,7 +1,8 @@
 import os
 from django.core.wsgi import get_wsgi_application
+from whitenoise import WhiteNoise
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
-
 application = get_wsgi_application()
-app = application  # Add this line for Vercel
+application = WhiteNoise(application)
+app = application # Vercel looks for 'app'
