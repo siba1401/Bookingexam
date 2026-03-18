@@ -41,21 +41,51 @@ class ExamDeptAdmin(UserAdmin):
     def bulk_upload_faculty(self, request):
         if request.method == "POST":
             file = request.FILES.get('excel_file')
+            if not file:
+                messages.error(request, "Please select an Excel file.")
+                return redirect("..")
+                
             try:
-                # Vercel fix: Read from memory
+                # Read from memory for Vercel compatibility
                 df = pd.read_excel(io.BytesIO(file.read()))
+                count = 0
+                
                 for _, row in df.iterrows():
-                    if pd.isna(row.get('username')) or pd.isna(row.get('email')): continue
-                    user, created = Faculty.objects.get_or_create(username=str(row['username']).strip().lower())
-                    user.email = row.get('email')
-                    user.school = row.get('school', 'MPSTME')
-                    if created: user.set_password("password123")
-                    user.is_staff = True
-                    user.save()
-                messages.success(request, "Faculty imported successfully.")
+                    # Force data to string and clean it
+                    username = str(row.get('username', '')).strip().lower()
+                    email = str(row.get('email', '')).strip()
+                    school = str(row.get('school', 'MPSTME')).strip().upper()
+
+                    if not username or 'nan' in username or not email:
+                        continue
+                    
+                    # update_or_create ensures we don't get 'Duplicate' errors
+                    user, created = Faculty.objects.update_or_create(
+                        username=username,
+                        defaults={
+                            'email': email,
+                            'school': school[:10], # Truncate to match model max_length
+                            'is_staff': True,      # Must be True to see Admin
+                            'is_active': True,
+                        }
+                    )
+                    
+                    if created:
+                        user.set_password("password123")
+                        user.save()
+                    
+                    # OPTIONAL: Add them to a 'Faculty' group if you have one
+                    # from django.contrib.auth.models import Group
+                    # group, _ = Group.objects.get_or_create(name='Faculty')
+                    # user.groups.add(group)
+                    
+                    count += 1
+                
+                messages.success(request, f"Successfully processed {count} Faculty records.")
                 return redirect("admin:booking_app_faculty_changelist")
             except Exception as e:
-                messages.error(request, f"Error: {e}")
+                messages.error(request, f"Excel processing failed: {e}")
+        
         return render(request, 'admin/bulk_upload.html', {'title': 'Bulk Upload Faculty'})
 
 
