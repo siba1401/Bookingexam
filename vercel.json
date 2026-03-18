@@ -1,11 +1,7 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "core/wsgi.py",
-      "use": "@vercel/python"
-    }
-  ],
+  "framework": "django",
+  "installCommand": "pip install -r requirements.txt && python manage.py collectstatic --noinput",
   "routes": [
     {
       "src": "/static/(.*)",
@@ -15,6 +11,5 @@
       "src": "/(.*)",
       "dest": "core/wsgi.py"
     }
-  ],
-  "installCommand": "pip install -r requirements.txt && python manage.py collectstatic --noinput"
+  ]
 }
